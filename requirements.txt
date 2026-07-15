@@ -1,0 +1,11 @@
+numpy
+pandas
+scipy
+matplotlib
+plotly
+pydantic
+sqlalchemy
+pytest
+requests
+pyyaml
+jupyter
