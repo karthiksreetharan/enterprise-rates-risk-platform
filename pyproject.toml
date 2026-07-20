@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enterprise-rates-risk-platform"
+version = "0.1.0"
+description = "Enterprise Interest Rate Risk Analytics Platform"
+readme = "README.md"
+requires-python = ">=3.11"
+
+authors = [
+    { name = "Karthik" }
+]
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "plotly",
+    "jupyter"
+]
+
+[tool.setuptools]
+packages = ["src"]
