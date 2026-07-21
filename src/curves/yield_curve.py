@@ -15,7 +15,8 @@ from src.curves.interpolation import linear_interpolate
 
 class YieldCurve:
     """
-    Zero-coupon yield curve.
+    Zero-coupon yield curve supporting lookups by
+    tenor, maturity, and payment date.
     """
 
     def __init__(
@@ -34,6 +35,37 @@ class YieldCurve:
         self.curve_points = sorted(
             curve_points,
             key=lambda point: point.maturity,
+        )
+
+    # ---------------------------------------------------------
+    # Private Utilities
+    # ---------------------------------------------------------
+
+    def _year_fraction(
+        self,
+        payment_date: date,
+    ) -> float:
+        """
+        Convert a payment date into time to maturity.
+
+        Stage 1 uses calendar years so that tenor-based
+        curve pillars (1Y, 2Y, 3Y, ...) align exactly with
+        payment dates, avoiding leap-year drift.
+        """
+
+        if payment_date < self.valuation_date:
+            raise ValueError(
+                "Payment date cannot be before valuation date."
+            )
+
+        years = payment_date.year - self.valuation_date.year
+        months = payment_date.month - self.valuation_date.month
+        days = payment_date.day - self.valuation_date.day
+
+        return (
+            years
+            + months / 12.0
+            + days / 365.0
         )
 
     # ---------------------------------------------------------
@@ -133,6 +165,36 @@ class YieldCurve:
         )
 
     # ---------------------------------------------------------
+    # Lookup by Payment Date
+    # ---------------------------------------------------------
+
+    def zero_rate(
+        self,
+        payment_date: date,
+    ) -> float:
+
+        maturity = self._year_fraction(
+            payment_date
+        )
+
+        return self.get_zero_rate_by_time(
+            maturity
+        )
+
+    def discount_factor(
+        self,
+        payment_date: date,
+    ) -> float:
+
+        maturity = self._year_fraction(
+            payment_date
+        )
+
+        return self.get_discount_factor_by_time(
+            maturity
+        )
+
+    # ---------------------------------------------------------
     # Utilities
     # ---------------------------------------------------------
 
@@ -190,9 +252,7 @@ class YieldCurve:
             )
 
         print("-" * 72)
-        print(
-            f"Interpolation : Linear"
-        )
+        print("Interpolation : Linear")
         print(
             f"Curve Points  : {self.number_of_points()}"
         )
