@@ -27,17 +27,6 @@ class CurveShocker:
     ) -> YieldCurve:
         """
         Apply a parallel shift to every zero rate.
-
-        Parameters
-        ----------
-        curve
-            Original yield curve.
-
-        shift
-            Shift in decimal.
-            Example:
-                +0.0001 = +1 bp
-                -0.0001 = -1 bp
         """
 
         shocked_points = []
@@ -45,6 +34,49 @@ class CurveShocker:
         for point in curve:
 
             new_rate = point.zero_rate + shift
+
+            shocked_points.append(
+                CurvePoint(
+                    tenor=point.tenor,
+                    maturity=point.maturity,
+                    zero_rate=new_rate,
+                    discount_factor=exp(
+                        -new_rate * point.maturity
+                    ),
+                )
+            )
+
+        return YieldCurve(
+            valuation_date=curve.valuation_date,
+            curve_points=shocked_points,
+        )
+
+    def bucket_shift(
+        self,
+        curve: YieldCurve,
+        tenor: str,
+        shift: float,
+    ) -> YieldCurve:
+        """
+        Shift only a single tenor.
+
+        Parameters
+        ----------
+        tenor
+            Tenor to shock (e.g. "2Y")
+
+        shift
+            Decimal shift.
+        """
+
+        shocked_points = []
+
+        for point in curve:
+
+            new_rate = point.zero_rate
+
+            if point.tenor == tenor:
+                new_rate += shift
 
             shocked_points.append(
                 CurvePoint(

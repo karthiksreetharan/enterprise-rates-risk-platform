@@ -1,32 +1,30 @@
-from datetime import date
-
-from src.curves.bootstrapper import Bootstrapper
-from src.market_data.market_instrument import MarketInstrument
-from src.market_data.market_quote_collection import MarketQuoteCollection
 from src.risk.curve_shocker import CurveShocker
 
 
-def test_parallel_shift():
-
-    quotes = MarketQuoteCollection()
-
-    quotes.add(MarketInstrument("Deposit", "1M", 0.05))
-    quotes.add(MarketInstrument("Deposit", "3M", 0.05))
-    quotes.add(MarketInstrument("Deposit", "6M", 0.05))
-    quotes.add(MarketInstrument("Deposit", "1Y", 0.05))
-    quotes.add(MarketInstrument("Deposit", "2Y", 0.05))
-    quotes.add(MarketInstrument("Deposit", "3Y", 0.05))
-
-    curve = Bootstrapper(
-        valuation_date=date(2026, 1, 1),
-        market_quotes=quotes,
-    ).build()
+def test_parallel_shift(sample_curve):
 
     shocked = CurveShocker().parallel_shift(
-        curve,
+        sample_curve,
         0.0001,
     )
 
-    for original, shifted in zip(curve, shocked):
+    for original, shifted in zip(sample_curve, shocked):
 
+        assert shifted.tenor == original.tenor
         assert shifted.zero_rate == original.zero_rate + 0.0001
+
+
+def test_bucket_shift(sample_curve):
+
+    shocked = CurveShocker().bucket_shift(
+        sample_curve,
+        tenor="2Y",
+        shift=0.0001,
+    )
+
+    for original, shifted in zip(sample_curve, shocked):
+
+        if original.tenor == "2Y":
+            assert shifted.zero_rate == original.zero_rate + 0.0001
+        else:
+            assert shifted.zero_rate == original.zero_rate
