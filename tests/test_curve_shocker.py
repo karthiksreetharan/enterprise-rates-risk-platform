@@ -28,3 +28,25 @@ def test_bucket_shift(sample_curve):
             assert shifted.zero_rate == original.zero_rate + 0.0001
         else:
             assert shifted.zero_rate == original.zero_rate
+
+
+def test_multi_bucket_shift(sample_curve):
+
+    shocked = CurveShocker().multi_bucket_shift(
+        sample_curve,
+        tenor_shifts={
+            "1Y": 0.0010,
+            "2Y": -0.0005,
+        },
+    )
+
+    for original, shifted in zip(sample_curve, shocked):
+
+        if original.tenor == "1Y":
+            assert shifted.zero_rate == original.zero_rate + 0.0010
+
+        elif original.tenor == "2Y":
+            assert shifted.zero_rate == original.zero_rate - 0.0005
+
+        else:
+            assert shifted.zero_rate == original.zero_rate

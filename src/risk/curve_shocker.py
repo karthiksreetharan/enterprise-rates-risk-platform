@@ -93,3 +93,49 @@ class CurveShocker:
             valuation_date=curve.valuation_date,
             curve_points=shocked_points,
         )
+
+    def multi_bucket_shift(
+        self,
+        curve: YieldCurve,
+        tenor_shifts: dict[str, float],
+    ) -> YieldCurve:
+        """
+        Apply independent shocks to multiple curve tenors.
+
+        Parameters
+        ----------
+        tenor_shifts
+            Dictionary mapping tenor to decimal shift.
+
+            Example
+            -------
+            {
+                "1Y": 0.0003,
+                "2Y": -0.0004,
+                "5Y": 0.0008,
+            }
+        """
+
+        shocked_points = []
+
+        for point in curve:
+
+            shift = tenor_shifts.get(point.tenor, 0.0)
+
+            new_rate = point.zero_rate + shift
+
+            shocked_points.append(
+                CurvePoint(
+                    tenor=point.tenor,
+                    maturity=point.maturity,
+                    zero_rate=new_rate,
+                    discount_factor=exp(
+                        -new_rate * point.maturity
+                    ),
+                )
+            )
+
+        return YieldCurve(
+            valuation_date=curve.valuation_date,
+            curve_points=shocked_points,
+        )
