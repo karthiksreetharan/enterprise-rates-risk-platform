@@ -26,3 +26,9 @@ class PaymentFrequency(Enum):
 class FloatingIndex(Enum):
     SOFR = "SOFR"
     LIBOR_3M = "LIBOR 3M"
+    
+class CashFlowType(Enum):
+    """Type of coupon cash flow."""
+
+    FIXED = "Fixed"
+    FLOATING = "Floating"    
