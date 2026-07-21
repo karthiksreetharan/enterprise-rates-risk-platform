@@ -1,81 +1,226 @@
 """
 yield_curve.py
 
-Represents a bootstrapped yield curve.
+Represents a bootstrapped zero-coupon yield curve.
 """
 
 from __future__ import annotations
 
 from datetime import date
+from math import exp
+
+from src.curves.curve_point import CurvePoint
+from src.curves.interpolation import linear_interpolate
 
 
 class YieldCurve:
     """
-    Represents a completed yield curve.
-
-    Stores zero rates and discount factors
-    for each market tenor.
+    Zero-coupon yield curve.
     """
 
     def __init__(
         self,
         valuation_date: date,
-        zero_rates: dict[str, float],
-        discount_factors: dict[str, float],
+        curve_points: list[CurvePoint],
     ) -> None:
 
+        if not curve_points:
+            raise ValueError(
+                "Yield curve must contain at least one curve point."
+            )
+
         self.valuation_date = valuation_date
-        self.zero_rates = zero_rates
-        self.discount_factors = discount_factors
 
-    def get_zero_rate(self, tenor: str) -> float:
-        """
-        Return the zero rate for a tenor.
-        """
+        self.curve_points = sorted(
+            curve_points,
+            key=lambda point: point.maturity,
+        )
 
-        return self.zero_rates[tenor]
+    # ---------------------------------------------------------
+    # Lookup by Tenor
+    # ---------------------------------------------------------
 
-    def get_discount_factor(self, tenor: str) -> float:
-        """
-        Return the discount factor for a tenor.
-        """
+    def get_curve_point(
+        self,
+        tenor: str,
+    ) -> CurvePoint:
 
-        return self.discount_factors[tenor]
+        tenor = tenor.strip().upper()
 
-    def summary(self) -> None:
-        """
-        Display the yield curve.
-        """
+        for point in self.curve_points:
+            if point.tenor == tenor:
+                return point
 
-        print("=" * 70)
+        raise ValueError(
+            f"Unknown tenor '{tenor}'."
+        )
+
+    def get_zero_rate(
+        self,
+        tenor: str,
+    ) -> float:
+
+        return self.get_curve_point(
+            tenor
+        ).zero_rate
+
+    def get_discount_factor(
+        self,
+        tenor: str,
+    ) -> float:
+
+        return self.get_curve_point(
+            tenor
+        ).discount_factor
+
+    # ---------------------------------------------------------
+    # Lookup by Maturity
+    # ---------------------------------------------------------
+
+    def get_zero_rate_by_time(
+        self,
+        maturity: float,
+    ) -> float:
+
+        first = self.curve_points[0]
+        last = self.curve_points[-1]
+
+        if maturity < first.maturity:
+            raise ValueError(
+                "Requested maturity is below curve range."
+            )
+
+        if maturity > last.maturity:
+            raise ValueError(
+                "Requested maturity is above curve range."
+            )
+
+        for point in self.curve_points:
+
+            if abs(point.maturity - maturity) < 1e-12:
+                return point.zero_rate
+
+        for left, right in zip(
+            self.curve_points[:-1],
+            self.curve_points[1:],
+        ):
+
+            if left.maturity <= maturity <= right.maturity:
+
+                return linear_interpolate(
+                    maturity,
+                    left.maturity,
+                    left.zero_rate,
+                    right.maturity,
+                    right.zero_rate,
+                )
+
+        raise RuntimeError(
+            "Interpolation failed."
+        )
+
+    def get_discount_factor_by_time(
+        self,
+        maturity: float,
+    ) -> float:
+
+        zero_rate = self.get_zero_rate_by_time(
+            maturity
+        )
+
+        return exp(
+            -zero_rate * maturity
+        )
+
+    # ---------------------------------------------------------
+    # Utilities
+    # ---------------------------------------------------------
+
+    def available_tenors(
+        self,
+    ) -> list[str]:
+
+        return [
+            point.tenor
+            for point in self.curve_points
+        ]
+
+    def number_of_points(
+        self,
+    ) -> int:
+
+        return len(
+            self.curve_points
+        )
+
+    # ---------------------------------------------------------
+    # Reporting
+    # ---------------------------------------------------------
+
+    def summary(
+        self,
+    ) -> None:
+
+        print("=" * 72)
         print("Yield Curve")
-        print("=" * 70)
+        print("=" * 72)
 
-        print(f"Valuation Date : {self.valuation_date}")
+        print(
+            f"Valuation Date : {self.valuation_date}"
+        )
+
         print()
 
         print(
-            f"{'Tenor':<10}"
-            f"{'Zero Rate':>15}"
+            f"{'Tenor':<8}"
+            f"{'Years':>10}"
+            f"{'Zero Rate':>16}"
             f"{'Discount Factor':>22}"
         )
 
-        print("-" * 70)
+        print("-" * 72)
 
-        for tenor in self.zero_rates:
+        for point in self.curve_points:
 
             print(
-                f"{tenor:<10}"
-                f"{self.zero_rates[tenor]:>14.4%}"
-                f"{self.discount_factors[tenor]:>21.6f}"
+                f"{point.tenor:<8}"
+                f"{point.maturity:>10.4f}"
+                f"{point.zero_rate:>15.4%}"
+                f"{point.discount_factor:>22.6f}"
             )
 
-        print("-" * 70)
+        print("-" * 72)
+        print(
+            f"Interpolation : Linear"
+        )
+        print(
+            f"Curve Points  : {self.number_of_points()}"
+        )
 
-    def __repr__(self) -> str:
+    # ---------------------------------------------------------
+    # Representation
+    # ---------------------------------------------------------
+
+    def __len__(
+        self,
+    ) -> int:
+
+        return self.number_of_points()
+
+    def __iter__(
+        self,
+    ):
+
+        return iter(
+            self.curve_points
+        )
+
+    def __repr__(
+        self,
+    ) -> str:
 
         return (
-            f"YieldCurve("
+            "YieldCurve("
             f"valuation_date={self.valuation_date}, "
-            f"points={len(self.zero_rates)})"
+            f"points={len(self)})"
         )

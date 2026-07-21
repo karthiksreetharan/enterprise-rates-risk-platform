@@ -7,7 +7,7 @@ Container for market instrument quotes used in yield curve construction.
 from __future__ import annotations
 
 from src.common.constants import TENOR_TO_MONTHS
-from src.curves.market_instrument import MarketInstrument
+from src.market_data.market_instrument import MarketInstrument
 
 
 class MarketQuoteCollection:
